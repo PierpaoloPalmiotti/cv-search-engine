@@ -1,0 +1,19 @@
+[2025-12-09 16:13:43] Modello LLM selezionato: llama3.2:1b
+[2025-12-09 16:14:14] === INIZIO GENERAZIONE JSON ===
+[2025-12-09 16:14:14] Lunghezza input: 262 caratteri
+[2025-12-09 16:14:14] Modello: llama3.2:1b
+[2025-12-09 16:14:52] JSON estratto con successo: Nome Non Specificato
+[2025-12-09 16:14:52] === JSON GENERATO CON SUCCESSO ===
+[2025-12-09 16:14:52] Nome: Nome Non Specificato
+[2025-12-09 16:14:52] Skills: 0 items
+[2025-12-09 16:14:52] Esperienze: 1 items
+[2025-12-09 16:15:05] Modello LLM selezionato: llama3.2:3b
+[2025-12-09 16:15:09] === INIZIO GENERAZIONE JSON ===
+[2025-12-09 16:15:09] Lunghezza input: 262 caratteri
+[2025-12-09 16:15:09] Modello: llama3.2:3b
+[2025-12-09 16:16:30] JSON estratto con successo: Mario Rossi
+[2025-12-09 16:16:30] === JSON GENERATO CON SUCCESSO ===
+[2025-12-09 16:16:30] Nome: Mario Rossi
+[2025-12-09 16:16:30] Skills: 2 items
+[2025-12-09 16:16:30] Esperienze: 1 items
+[2025-12-09 16:17:34] JSON copiato negli appunti

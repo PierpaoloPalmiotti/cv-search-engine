@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Dati e output (contengono dati personali/sensibili)
+cv_json/
+cv_ppt/
+cv_generati/
+log_executions/
+script/
+
+# Embeddings (file pesanti, rigenerabili)
+*.npy
+
+# Log
+cv_search_log.txt
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# File temporanei Office
+~$*.pptx
+
+# File pptx template
+template/Template_ACN_1.pptx
+template/Template_ACN_2.pptx
