@@ -18,6 +18,7 @@ input/cv_json/*.json
 input/embeddings/*.npy
 input/template/*.pptx
 output/*.pptx
+output/cv_generati/*.pptx
 log_executions/*.txt
 visualizations/
 
