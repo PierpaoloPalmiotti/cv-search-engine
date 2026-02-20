@@ -9,9 +9,12 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # → RAG/
+
 class EmbeddingLogger:
     """Gestisce il logging su file con timestamp"""
-    def __init__(self, log_folder="./log_executions"):
+    def __init__(self, log_folder=BASE_DIR / "log_executions"):
         self.log_folder = Path(log_folder)
         self.log_folder.mkdir(exist_ok=True, parents=True)
         
@@ -47,7 +50,8 @@ class EmbeddingLogger:
         self.log(f"[{timestamp}] ⚠ WARNING: {message}")
 
 
-def create_visualization_2d(embeddings, labels, output_folder="./visualizations", logger=None):
+def create_visualization_2d(embeddings, labels, output_folder=None, logger=None):
+    output_path = Path(output_folder) if output_folder else BASE_DIR / "visualizations"
     """Crea visualizzazione 2D con matplotlib"""
     if logger:
         logger.log_section("CREAZIONE VISUALIZZAZIONE 2D")
@@ -297,9 +301,9 @@ def json_to_sections(json_data):
     return sections
 
 
-def load_json_files_with_sections(json_folder="./cv_json", logger=None):
+def load_json_files_with_sections(json_folder=None, logger=None):
     """Carica JSON e crea sezioni separate"""
-    json_path = Path(json_folder)
+    json_path = Path(json_folder) if json_folder else BASE_DIR / "input" / "cv_json"
     
     if not json_path.exists():
         error_msg = f"Cartella non trovata: {json_folder}"
@@ -475,23 +479,25 @@ def main():
     
     # Salva file
     logger.log_section("SALVATAGGIO FILE NPY")
+    EMB_DIR = BASE_DIR / "input" / "embeddings"
+    EMB_DIR.mkdir(exist_ok=True, parents=True)
     try:
         # Embeddings finali pesati
-        np.save('cv_embeddings.npy', embeddings_final)
+        np.save(str(EMB_DIR / 'cv_embeddings.npy'), embeddings_final)
         logger.log_success("cv_embeddings.npy salvato (weighted final)")
         
         # Salva anche embeddings per sezione (per analisi avanzate)
         for section, emb in embeddings_by_section.items():
             filename = f'cv_embeddings_{section}.npy'
-            np.save(filename, emb)
+            np.save(str(EMB_DIR / f'cv_embeddings_{section}.npy'), emb)
             logger.log_success(f"{filename} salvato")
         
         # Labels
-        np.save('cv_labels.npy', np.array(cv_labels))
+        np.save(str(EMB_DIR / 'cv_labels.npy'), np.array(cv_labels))
         logger.log_success("cv_labels.npy salvato")
         
         # JSON names
-        np.save('cv_json_names.npy', np.array(cv_json_names))
+        np.save(str(EMB_DIR / 'cv_json_names.npy'), np.array(cv_json_names))
         logger.log_success("cv_json_names.npy salvato")
         
         # Salva anche le sezioni testuali per riferimento
@@ -500,7 +506,7 @@ def main():
             full_text = f"{sections['skills']} {sections['experience']} {sections['education']} {sections['summary']}"
             cv_texts_full.append(full_text)
         
-        np.save('cv_texts.npy', np.array(cv_texts_full))
+        np.save(str(EMB_DIR / 'cv_texts.npy'), np.array(cv_texts_full))
         logger.log_success("cv_texts.npy salvato")
         
     except Exception as e:
@@ -543,12 +549,12 @@ def main():
     logger.log(f"Opzione selezionata: {choice}", also_print=False)
     
     if choice == "2":
-        create_visualization_2d(embeddings_final, cv_labels, logger=logger)
+        create_visualization_2d(embeddings_final, cv_labels, output_folder=None, logger=logger)
     elif choice == "3":
-        create_visualization_3d(embeddings_final, cv_labels, cv_sections_list, logger=logger)
+        create_visualization_3d(embeddings_final, cv_labels, cv_sections_list, output_folder=None, logger=logger)
     elif choice == "4":
-        create_visualization_2d(embeddings_final, cv_labels, logger=logger)
-        create_visualization_3d(embeddings_final, cv_labels, cv_sections_list, logger=logger)
+        create_visualization_2d(embeddings_final, cv_labels, output_folder=None, logger=logger)
+        create_visualization_3d(embeddings_final, cv_labels, cv_sections_list, output_folder=None, logger=logger)
     else:
         logger.log("Nessuna visualizzazione richiesta")
     

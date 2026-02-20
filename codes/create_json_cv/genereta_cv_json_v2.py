@@ -15,7 +15,8 @@ from datetime import datetime
 from tkinter import messagebox, filedialog
 
 # ── Configurazione ────────────────────────────────────────────
-CV_JSON_FOLDER = Path("./cv_json")
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # → RAG/
+CV_JSON_FOLDER = BASE_DIR / "input" / "cv_json"
 CV_JSON_FOLDER.mkdir(exist_ok=True, parents=True)
 
 ctk.set_appearance_mode("dark")

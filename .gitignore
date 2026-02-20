@@ -9,18 +9,24 @@ build/
 venv/
 env/
 
-# Dati e output (contengono dati personali/sensibili)
-cv_json/
+# Cartelle escluse completamente
 cv_ppt/
-cv_generati/
-log_executions/
-script/
+codes/ppt_to_json/
 
-# Embeddings (file pesanti, rigenerabili)
-*.npy
+# Contenuti dati (cartelle vuote mantenute via .gitkeep)
+input/cv_json/*.json
+input/embeddings/*.npy
+input/template/*.pptx
+output/*.pptx
+log_executions/*.txt
+visualizations/
 
-# Log
-cv_search_log.txt
+# Mantieni cartelle vuote
+!input/cv_json/.gitkeep
+!input/embeddings/.gitkeep
+!input/template/.gitkeep
+!output/.gitkeep
+!log_executions/.gitkeep
 
 # OS
 .DS_Store
@@ -33,9 +39,10 @@ desktop.ini
 *.swp
 *.swo
 
+# Versioni vecchie dei codici
+codes/create_json_cv/generate_cv_json_v1.py
+codes/embedding_generators/rag_bge-m3_v1.py
+codes/cv_search_app_v0.py
+
 # File temporanei Office
 ~$*.pptx
-
-# File pptx template
-template/Template_ACN_1.pptx
-template/Template_ACN_2.pptx

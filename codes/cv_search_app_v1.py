@@ -23,6 +23,7 @@ from pptx.util import Pt
 from pptx.enum.text import PP_ALIGN
 import requests
 
+BASE_DIR = Path(__file__).resolve().parent.parent  # → RAG/
 
 # Configura tema e colori
 ctk.set_appearance_mode("dark")  # "dark" o "light"
@@ -31,7 +32,7 @@ ctk.set_default_color_theme("blue")  # "blue", "green", "dark-blue"
 class Logger:
     """Gestisce il logging su file"""
     def __init__(self, log_file="cv_search_log.txt"):
-        self.log_file = log_file
+        self.log_file = str(BASE_DIR / "log_executions" / "cv_search_log.txt")
         self.log_to_file(f"\n{'='*80}\nNuova sessione iniziata: {datetime.now()}\n{'='*80}\n")
     
     def log_to_file(self, message):
@@ -48,9 +49,9 @@ class Logger:
 
 class PPTXToJSONExtractor:
     """Estrattore PPTX -> JSON"""
-    def __init__(self, cv_ppt_folder="./cv_ppt", cv_json_folder="./cv_json", logger=None):
-        self.cv_ppt_folder = Path(cv_ppt_folder)
-        self.cv_json_folder = Path(cv_json_folder)
+    def __init__(self, cv_ppt_folder=None, cv_json_folder=None, logger=None):
+        self.cv_ppt_folder = Path(cv_ppt_folder) if cv_ppt_folder else BASE_DIR / "cv_ppt"
+        self.cv_json_folder = Path(cv_json_folder) if cv_json_folder else BASE_DIR / "input" / "cv_json"
         self.cv_json_folder.mkdir(exist_ok=True, parents=True)
         self.logger = logger or Logger()
     
@@ -573,9 +574,9 @@ class PPTXGeneratorGeneric:
             return False
 
 
-def get_available_templates(template_folder="./template"):
+def get_available_templates(template_folder=None):
     """Scansiona la cartella template e restituisce i template disponibili"""
-    template_path = Path(template_folder)
+    template_path = Path(template_folder) if template_folder else BASE_DIR / "input" / "template"
     if not template_path.exists():
         return []
     
@@ -1075,7 +1076,7 @@ class CVSearchApp:
       
     def load_templates(self):
         """Carica i template disponibili dalla cartella"""
-        self.available_templates = get_available_templates("./template")
+        self.available_templates = get_available_templates()
         
         if self.available_templates:
             template_names = [t["display_name"] for t in self.available_templates]
@@ -1125,8 +1126,9 @@ class CVSearchApp:
     def load_data(self):
         """Carica dati NPY subito, modello BGE-M3 in background"""
         try:
-            required_files = ['cv_embeddings.npy', 'cv_texts.npy', 'cv_labels.npy']
-            missing = [f for f in required_files if not os.path.exists(f)]
+            EMB_DIR = BASE_DIR / "input" / "embeddings"
+            required_files = [EMB_DIR / 'cv_embeddings.npy', EMB_DIR / 'cv_texts.npy', EMB_DIR / 'cv_labels.npy']
+            missing = [f.name for f in required_files if not f.exists()]
 
             if missing:
                 messagebox.showerror("Errore",
@@ -1136,9 +1138,9 @@ class CVSearchApp:
                 return
 
             # Carica subito i file NPY (veloce, ~100ms)
-            self.cv_embeddings = np.load('cv_embeddings.npy')
-            self.cv_texts = np.load('cv_texts.npy', allow_pickle=True)
-            self.cv_labels = np.load('cv_labels.npy', allow_pickle=True)
+            self.cv_embeddings = np.load(str(EMB_DIR / 'cv_embeddings.npy'))
+            self.cv_texts = np.load(str(EMB_DIR / 'cv_texts.npy'), allow_pickle=True)
+            self.cv_labels = np.load(str(EMB_DIR / 'cv_labels.npy'), allow_pickle=True)
 
             self.status_label.configure(
                 text=f"⏳ {len(self.cv_labels)} CV caricati — modello in caricamento...",
@@ -1412,7 +1414,7 @@ Rispondi in italiano, formato chiaro."""
             self.append_result("📄 STEP 2: GENERAZIONE CV\n")
             self.append_result("─"*80 + "\n")
             
-            output_folder = Path("./cv_generati")
+            output_folder = BASE_DIR / "output"
             output_folder.mkdir(exist_ok=True)
             
             json_stem = json_file.stem
@@ -1588,7 +1590,7 @@ Rispondi in italiano, formato chiaro."""
                 self.search_button.configure(state="normal", text="🔎 Avvia Ricerca e Genera CV")
                 return
 
-            output_folder = Path("./cv_generati")
+            output_folder = BASE_DIR / "output"
             output_folder.mkdir(exist_ok=True)
             
             generated_files = []
