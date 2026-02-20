@@ -51,12 +51,11 @@ class EmbeddingLogger:
 
 
 def create_visualization_2d(embeddings, labels, output_folder=None, logger=None):
-    output_path = Path(output_folder) if output_folder else BASE_DIR / "visualizations"
     """Crea visualizzazione 2D con matplotlib"""
     if logger:
         logger.log_section("CREAZIONE VISUALIZZAZIONE 2D")
     
-    output_path = Path(output_folder)
+    output_path = Path(output_folder) if output_folder else BASE_DIR / "visualizations"
     output_path.mkdir(exist_ok=True, parents=True)
     
     # t-SNE 2D
@@ -108,13 +107,12 @@ def create_visualization_2d(embeddings, labels, output_folder=None, logger=None)
     return embeddings_2d
 
 
-def create_visualization_3d(embeddings, labels, cv_sections_list, output_folder="./visualizations", logger=None):
+def create_visualization_3d(embeddings, labels, cv_sections_list, output_folder=None, logger=None):
     """Crea visualizzazioni 3D interattive con Plotly"""
     if logger:
         logger.log_section("CREAZIONE VISUALIZZAZIONI 3D")
     
-    output_path = Path(output_folder)
-    output_path.mkdir(exist_ok=True, parents=True)
+    output_path = Path(output_folder) if output_folder else BASE_DIR / "visualizations"
     
     # Crea testi per hover
     hover_texts = []
@@ -437,7 +435,7 @@ def main():
     logger.log("="*80 + "\n")
     
     # Carica JSON con sezioni
-    result = load_json_files_with_sections("./cv_json", logger=logger)
+    result = load_json_files_with_sections(logger=logger)
     if result is None:
         logger.log_error("Impossibile caricare i CV. Uscita.")
         return
