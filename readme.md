@@ -1,248 +1,323 @@
-# CV Search Engine (RAG)
+# 🔍 CV Search Engine — RAG Pipeline per Selezione Candidati
 
-AI-powered CV search and matching system that uses semantic embeddings to find the best candidates for a given job query, with automatic CV generation in PowerPoint format.
+Sistema di ricerca e generazione CV basato su **Retrieval-Augmented Generation (RAG)**.  
+Analizza query in linguaggio naturale, trova i candidati più adatti tramite similarità semantica e genera CV formattati in PowerPoint.
 
-## Features
+---
 
-- **Semantic Search**: BGE-M3 embeddings with weighted multi-section matching (Skills 40%, Experience 40%, Education 15%, Summary 5%)
-- **Query Normalization**: Converts free-text queries into structured JSON, ensuring query and CV embeddings live in the same vector space
-- **LLM Analysis**: Integrates with Ollama for local LLM-based candidate evaluation
-- **CV Generation**: Automatically fills PowerPoint templates with candidate data
-- **3D PCA Visualization**: Interactive scatter plot showing query position relative to CV cluster
-- **CV JSON Generator**: GUI tool to create and manage candidate profiles
+## 📐 Architettura del Sistema
 
-## Project Structure
+### Pipeline Completa
 
 ```
-RAG/
-├── codes/
-│   ├── create_json_cv/
-│   │   └── generate_cv_json_v2.py      # CV profile editor (GUI)
-│   ├── embedding_generators/
-│   │   └── rag_bge-m3_v2.py            # Embedding generator (weighted)
-│   └── cv_search_app_v1.py             # Main search & generation app (GUI)
+┌─────────────────────────────────────────────────────────────────┐
+│                    CV SEARCH ENGINE                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
+│  │  CV JSON      │    │  BGE-M3      │    │  Embeddings      │  │
+│  │  (input)      │───▶│  Encoder     │───▶│  .npy files      │  │
+│  └──────────────┘    └──────────────┘    └──────────────────┘  │
+│                                                   │             │
+│        SETUP (una tantum)                         │             │
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─  │
+│        RUNTIME (ogni ricerca)                     │             │
+│                                                   ▼             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
+│  │  Query        │    │  Ollama LLM  │    │  JSON            │  │
+│  │  (testo       │───▶│  Parsing     │───▶│  strutturato     │  │
+│  │   libero)     │    │  (3b)        │    │  della query     │  │
+│  └──────────────┘    └──────────────┘    └────────┬─────────┘  │
+│                                                   │             │
+│                                                   ▼             │
+│                                          ┌──────────────────┐  │
+│                                          │  4 Sezioni        │  │
+│                                          │  Pesate           │  │
+│                                          │  Skills    (40%)  │  │
+│                                          │  Experience(40%)  │  │
+│                                          │  Education (15%)  │  │
+│                                          │  Summary   ( 5%)  │  │
+│                                          └────────┬─────────┘  │
+│                                                   │             │
+│                                                   ▼             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
+│  │  Top N        │◀──│  Cosine      │◀──│  Query           │  │
+│  │  Candidati    │    │  Similarity  │    │  Embedding       │  │
+│  └──────┬───────┘    └──────────────┘    └──────────────────┘  │
+│         │                                                       │
+│         ▼                                                       │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
+│  │  LLM          │    │  Grafico     │    │  CV PowerPoint   │  │
+│  │  Analisi      │    │  PCA 3D      │    │  (output)        │  │
+│  │  Candidati    │    │              │    │                  │  │
+│  └──────────────┘    └──────────────┘    └──────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Parsing della Query (LLM + Fallback)
+
+```
+                    Testo Libero
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │ Ollama LLM (1b o 3b)│
+              │  format: "json"     │
+              └──────────┬──────────┘
+                         │
+                    JSON valido?
+                   /           \
+                 SÌ             NO
+                 │               │
+                 ▼               ▼
+          ┌────────────┐  ┌────────────────┐
+          │ JSON        │  │ Parser Regex   │
+          │ strutturato │  │ (fallback      │
+          │ da LLM      │  │  deterministico│
+          └──────┬─────┘  └───────┬────────┘
+                 │                │
+                 └──────┬─────────┘
+                        ▼
+              ┌───────────────────┐
+              │  query_json_to_   │
+              │  sections()       │
+              │  (4 sezioni)      │
+              └───────────────────┘
+```
+
+### Struttura Cartelle
+
+```
+cv-search-engine/
 │
 ├── input/
-│   ├── cv_json/                        # CV profiles (JSON)
-│   ├── embeddings/                     # Generated .npy embeddings
-│   └── template/                       # PowerPoint templates (.pptx)
+│   ├── cv_json/              ← JSON dei candidati (da qui si parte)
+│   ├── embeddings/           ← File .npy generati (setup)
+│   │   ├── cv_embeddings.npy
+│   │   ├── cv_texts.npy
+│   │   ├── cv_labels.npy
+│   │   └── cv_json_names.npy
+│   └── template/             ← Template PowerPoint (.pptx)
 │
-├── output/                             # Generated CVs (.pptx)
-├── log_executions/                     # Execution logs
-├── visualizations/                     # t-SNE and PCA plots
+├── output/                   ← CV generati dalla pipeline
 │
-├── .gitignore
-├── LICENSE
-├── readme.md
-└── requirements.txt
+├── cv_ppt/                   ← CV originali in PowerPoint (opzionale)
+│
+├── log_executions/           ← File di log
+│   └── cv_search_log.txt
+│
+├── src/
+│   ├── cv_search_app_modern.py      ← Applicazione principale
+│   └── create_embeddings_weighted.py ← Script generazione embeddings
+│
+└── README.md
 ```
 
-## Quick Start (from zero)
+---
 
-### 1. Clone and install
+## ⚙️ Setup Iniziale (una tantum)
+
+> **Il setup va eseguito una sola volta.** Successivamente, gli embeddings andranno ricreati solo quando vengono aggiunti nuovi CV.
+
+### 1. Requisiti Software
+
+**Python 3.10+** e le seguenti dipendenze:
 
 ```bash
-# Clone the repository
-git clone https://github.com/PierpaoloPalmiotti/cv-search-engine.git
-cd cv-search-engine
-
-# Create virtual environment (recommended)
-python -m venv venv
-
-# Activate virtual environment
-venv\Scripts\activate           # Windows
-source venv/bin/activate        # Linux/Mac
-
-# Install Python dependencies
-pip install -r requirements.txt
+pip install customtkinter numpy scikit-learn matplotlib FlagEmbedding python-pptx requests
 ```
 
-### 2. Install and configure Ollama (for LLM analysis)
-
-Ollama runs a local LLM to analyze and evaluate candidates. It is optional but recommended.
-
-**Download and install:**
-- Go to [https://ollama.ai/](https://ollama.ai/) and download the installer for your OS
-- Run the installer
-
-**Download the LLM model:**
-
-Open a terminal and run:
+**Ollama** (LLM locale):
 
 ```bash
-# Start Ollama (if not already running)
-ollama serve
-
-# In another terminal, download the model
-ollama pull llama3.2:1b
-
-# Verify the model is installed
-ollama list
-
-# (Optional) Quick test
-ollama run llama3.2:1b "Hello, are you working?"
+# Installa Ollama da https://ollama.com
+# Poi scarica il modello:
+ollama pull llama3.2:3b
 ```
 
-> **Note:** `llama3.2:1b` requires ~1GB of RAM. For better results with 16GB+ RAM, you can also install `llama3.2:3b` (~2.5GB).
+### 2. Preparazione dei CV
 
-> **Important:** Ollama must be running in the background (`ollama serve`) whenever you use the search app with LLM analysis.
+#### Raccolta di massa
 
-### 3. Create CV profiles
+Il processo consigliato per raccogliere i CV in azienda è:
 
-```bash
-python codes/create_json_cv/generate_cv_json_v2.py
-```
+1. Inviare una comunicazione a tutti i dipendenti/consulenti
+2. Ogni persona compila il proprio CV in formato JSON tramite il tool online:  
+   **👉 [https://pierpaolopalmiotti.github.io/cv-json-generator/](https://pierpaolopalmiotti.github.io/cv-json-generator/)**
+3. I file JSON generati vengono salvati in una **cartella condivisa** (es. SharePoint, Google Drive, cartella di rete)
+4. L'admin raccoglie tutti i JSON e li copia nella cartella `input/cv_json/` del progetto
 
-This opens a GUI where you can add candidate profiles. Fill in the fields (name, title, skills, technologies, experience, etc.) and click **Save**. Each profile is saved as a JSON file in `input/cv_json/`.
+#### Struttura JSON attesa
 
-You need **at least 2-3 profiles** to generate meaningful embeddings.
-
-### 4. Generate embeddings
-
-```bash
-python codes/embedding_generators/rag_bge-m3_v2.py
-```
-
-This processes all JSON profiles in `input/cv_json/` and creates weighted embeddings in `input/embeddings/`. The first run will download the BGE-M3 model (~1.5GB, one-time only).
-
-At the end, you can optionally generate 2D/3D visualizations of the embedding space.
-
-### 5. Prepare a PowerPoint template
-
-Place a `.pptx` template in `input/template/`. The template must contain text placeholders that will be replaced with candidate data. See [Template Placeholders](#template-placeholders) below.
-
-### 6. Search and generate CVs
-
-```bash
-python codes/cv_search_app_v1.py
-```
-
-This opens the main GUI. Enter a query using structured tags:
-
-```
-Skills: Python, AWS, Kubernetes
-Industry: Banking
-Level: Senior
-Office: Milano
-```
-
-Click **"Avvia Ricerca e Genera CV"**. The system will:
-
-1. Normalize the query into the same JSON structure as CVs
-2. Generate weighted embeddings for the query
-3. Find the most similar candidates via cosine similarity
-4. Analyze candidates with local LLM (if Ollama is running)
-5. Visualize results in a 3D PCA plot
-6. Generate PowerPoint CVs from the selected template into `output/`
-
-## Pipeline Overview
-
-```
-generate_cv_json_v2.py             → Create/edit CV profiles (GUI)
-        ↓
-  input/cv_json/*.json             → Structured CV data
-        ↓
-rag_bge-m3_v2.py                   → Generate weighted embeddings
-        ↓
-  input/embeddings/*.npy           → Vector representations
-        ↓
-cv_search_app_v1.py                → Search, match & generate CVs (GUI)
-        ↓
-  output/*.pptx                    → Final PowerPoint CVs
-```
-
-## Prerequisites
-
-| Requirement | Version | Notes |
-|---|---|---|
-| Python | 3.10+ | Required |
-| Ollama | latest | Optional, for LLM analysis |
-| RAM | 8GB minimum | 16GB recommended for larger models |
-
-## Template Placeholders
-
-PowerPoint templates support these placeholders:
-
-| Placeholder | Description |
-|---|---|
-| `{{NOME}}` | Full name |
-| `{{RUOLO}}` / `{{TITOLO}}` | Job title / Role |
-| `{{BACKGROUND}}` | Professional summary |
-| `{{SKILLS1}}` | First 5 skills |
-| `{{SKILLS2}}` | Remaining skills (blank if ≤ 5) |
-| `{{SKILLS}}` | All skills in single column (legacy) |
-| `{{ESPERIENZE}}` | Work experience |
-| `{{CERTIFICAZIONI}}` | Certifications |
-| `{{LINGUE}}` | Languages |
-| `{{FORMAZIONE}}` | Education |
-
-## JSON Schema
-
-Each CV profile follows this structure:
+Ogni file JSON deve avere questa struttura:
 
 ```json
 {
   "name": "Mario Rossi",
-  "title": "Cloud Architect",
-  "Office": "Milano",
-  "Level": "Senior",
-  "summary": "10+ years in cloud infrastructure...",
-  "skills": ["Project Management", "Agile", "Problem Solving"],
-  "technologies": ["Python", "AWS", "Docker", "Kubernetes"],
+  "title": "Senior Developer",
+  "summary": "10 anni di esperienza nello sviluppo software...",
+  "skills": ["Python", "Java", "SQL"],
+  "technologies": ["AWS", "Docker", "Kubernetes"],
+  "certifications": ["AWS Solutions Architect"],
   "education": {
     "degree": "Laurea in Informatica",
-    "year": 2018,
-    "program": "Ingegneria del Software"
+    "year": 2015,
+    "program": "Università di Roma"
   },
-  "certifications": ["AWS Solutions Architect", "PMP"],
   "experience": [
     {
       "company": "Accenture",
-      "period": "2020-2023",
-      "description": "Led cloud migration projects for banking clients"
+      "period": "2018 - 2023",
+      "description": "Sviluppo piattaforme cloud per il settore banking"
     }
   ]
 }
 ```
 
-## Embedding Weights
+### 3. Generazione Embeddings
 
-The system uses weighted multi-section embeddings for optimal matching:
+```bash
+cd src
+python rag_bge-m3_v2.py
+```
 
-| Section | Weight | Contents |
+Questo script:
+- Legge tutti i JSON dalla cartella `input/cv_json/`
+- Divide ogni CV in 4 sezioni (skills 40%, experience 40%, education 15%, summary 5%)
+- Genera embeddings con BGE-M3 (1024 dimensioni)
+- Salva i file `.npy` in `input/embeddings/`
+
+> **⚠️ Gli embeddings vanno ricreati ogni volta che si aggiungono nuovi CV di nuovi candidati o se ci sono variazioni in quelli già esistenti. Valutare quindi una creazione automatica degli embedding ogni N mesi**
+
+### 4. Template PowerPoint
+
+Posiziona almeno un template `.pptx` nella cartella `input/template/`.  
+Tale template verrà utilizzato come base per la creazione del draft finale con le informazioni dei candidati estratti. 
+Le informazioni 
+I placeholder, o TAG, supportati sono:
+
+| Placeholder | Contenuto |
+|---|---|
+| `{{NOME}}` | Nome e cognome |
+| `{{TITOLO}}` / `{{RUOLO}}` | Ruolo professionale |
+| `{{BACKGROUND}}` | Sommario / profilo |
+| `{{SKILLS}}` | Lista competenze (singola) |
+| `{{SKILLS1}}` / `{{SKILLS2}}` | Competenze su due colonne |
+| `{{ESPERIENZE}}` | Esperienze lavorative |
+| `{{CERTIFICAZIONI}}` | Certificazioni |
+| `{{FORMAZIONE}}` | Titolo di studio |
+| `{{LINGUE}}` | Lingue parlate |
+
+---
+
+## ⏱️ Tempistiche di Setup
+
+Le tempistiche variano in base all'hardware. Ecco una stima indicativa:
+
+| Operazione | PC Base (8GB RAM, no GPU) | PC Medio (16GB RAM, no GPU) | PC con GPU |
+|---|---|---|---|
+| Download modello BGE-M3 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
+| Download Ollama llama3.2:3b (~2GB) | 5-10 min | 5-10 min | 5-10 min |
+| Generazione embeddings (10 CV) | 3-5 min | 1-3 min | 30-60 sec |
+| Generazione embeddings (100 CV) | 20-40 min | 10-20 min | 3-5 min |
+| Avvio applicazione (caricamento BGE-M3) | 30-60 sec | 15-30 sec | 5-10 sec |
+| Parsing query con LLM (per query) | 20-40 sec | 10-25 sec | 3-8 sec |
+| Analisi candidato con LLM (per candidato) | 30-60 sec | 15-30 sec | 5-10 sec |
+
+> **Nota:** Il primo avvio di Ollama con un nuovo modello è più lento perché deve caricare i pesi in memoria.  
+> Le esecuzioni successive sono significativamente più veloci perché il modello resta in cache.
+
+> **Nota per PC con 8GB RAM:** L'uso simultaneo di BGE-M3 e llama3.2:3b può saturare la RAM.  
+> Se si verificano rallentamenti, considerare l'uso di `llama3.2:1b` (meno preciso nel parsing ma più leggero).
+
+---
+
+## 🚀 Avvio
+
+```bash
+# Assicurati che Ollama sia in esecuzione
+ollama serve
+
+# Avvia l'applicazione
+cd src
+python cv_search_app_v1.py
+```
+
+---
+
+## 💡 Utilizzo
+
+### Ricerca e Generazione CV
+
+1. Scrivi la query nella casella di testo (linguaggio naturale o formato strutturato)
+2. Seleziona il template PowerPoint
+3. Seleziona il modello LLM (consigliato: `llama3.2:3b`)
+4. Imposta il numero di candidati da estrarre
+5. Clicca **"Avvia Ricerca e Genera CV"**
+
+**Esempi di query supportate:**
+
+```
+# Linguaggio naturale (richiede LLM attivo)
+Cerco senior developer Python AWS con esperienza banking
+
+# Formato strutturato (funziona anche senza LLM)
+Skills: Python, AWS, Docker
+Industry: Banking
+Level: Senior
+```
+
+### Generazione Diretta CV
+
+Se conosci già il candidato, inserisci nome e cognome nel campo dedicato e clicca **"Genera CV Diretto"** per generare il CV senza ricerca.
+
+---
+
+## 🧠 Come Funziona il Matching
+
+### Parsing della Query
+
+Quando inserisci una query in linguaggio naturale, il sistema:
+
+1. **Invia il testo a Ollama** (llama3.2:3b) che estrae skills, ruolo, settore, ecc. in formato JSON
+2. Se l'LLM non è disponibile o fallisce, usa un **parser regex** come fallback
+3. Il JSON estratto viene convertito in **4 sezioni pesate**
+
+### Pesi delle Sezioni
+
+| Sezione | Peso | Contenuto |
 |---|---|---|
-| Skills + Technologies | 40% | Technical competencies |
-| Experience | 40% | Work history and context |
-| Education + Certifications | 15% | Formal qualifications |
-| Summary + Title | 5% | General overview |
+| Skills | 40% | Competenze tecniche e tecnologie |
+| Experience | 40% | Esperienze lavorative e settori |
+| Education | 15% | Formazione e certificazioni |
+| Summary | 5% | Nome, ruolo, profilo generale |
 
-## Query Tags
+Le stesse 4 sezioni e gli stessi pesi vengono usati sia per i CV che per la query di ricerca, garantendo che il confronto avvenga nello stesso spazio semantico.
 
-The search app recognizes these tags in the query box (Italian and English):
+### Output della Pipeline
 
-| Tag | Maps to |
+Per ogni ricerca, il sistema produce:
+- **Classifica candidati** con score di similarità
+- **Analisi LLM** con valutazione, punti di forza e gap per ogni candidato
+- **Grafico PCA 3D e t-SNE 2D** che mostra la posizione della query rispetto a tutti i CV
+- **CV generati** in formato PowerPoint come draft nel template predisposto
+
+---
+
+## 🔧 Troubleshooting
+
+| Problema | Soluzione |
 |---|---|
-| `Skills:` / `Competenze:` | Skills matching (40% weight) |
-| `Technologies:` / `Tech:` | Technology matching (40% weight) |
-| `Experience:` / `Esperienza:` | Experience matching (40% weight) |
-| `Industry:` / `Settore:` | Added to summary context |
-| `Level:` / `Livello:` / `Seniority:` | Seniority filter |
-| `Office:` / `Sede:` | Location filter |
-| `Role:` / `Ruolo:` | Role matching |
-| `Certifications:` / `Certificazioni:` | Certification matching |
-| `Education:` / `Formazione:` | Education matching |
+| "LLM non disponibile" | Verifica che Ollama sia attivo: `ollama serve` |
+| "bind: Only one usage..." | Ollama è già in esecuzione, tutto ok |
+| Skills vuote nel parsing | Usa `llama3.2:3b`, non 1b |
+| Timeout LLM | Aumenta timeout o aspetta il primo caricamento del modello |
+| Embeddings mancanti | Esegui `python create_embeddings_weighted.py` |
+| RAM insufficiente | Usa `llama3.2:1b` o chiudi applicazioni in background |
 
-## Troubleshooting
+---
 
-| Problem | Solution |
-|---|---|
-| `File mancanti: cv_embeddings.npy` | Run `rag_bge-m3_v2.py` first to generate embeddings |
-| `Errore LLM: status 404` | Run `ollama pull llama3.2:1b` to download the model |
-| `Ollama non disponibile` | Start Ollama with `ollama serve` in a separate terminal |
-| `Nessun template trovato` | Place a `.pptx` template in `input/template/` |
-| `PPTX non trovato` | Ensure the JSON file name matches the candidate name |
-| App is slow to start | BGE-M3 model loads in background, wait for "Sistema pronto!" |
+## 📄 Licenza
 
-## License
-
-MIT License
+Progetto interno — tutti i diritti riservati.

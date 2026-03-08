@@ -934,6 +934,112 @@ class CVSearchApp:
 
         return query_json
 
+
+    def parse_query_with_llm(self, query_text):
+        """
+        Usa Ollama per convertire testo conversazionale libero
+        in un JSON strutturato con la stessa struttura dei CV.
+        
+        Ritorna il dict oppure None se fallisce.
+        """
+        prompt = f"""Extract skills, role, and industry from this job search query.
+
+Example:
+Query: "Cerco junior frontend React per healthcare"
+JSON: {{"title": "Junior Frontend Developer", "skills": ["React", "Frontend"], "technologies": [], "summary": "healthcare sector", "experience": [{{"company": "", "period": "", "description": "healthcare experience"}}], "certifications": [], "education": {{"degree": "", "year": null, "program": ""}}}}
+
+Query: "{query_text}"
+JSON:"""
+
+        try:
+            response = requests.post(
+                'http://localhost:11434/api/generate',
+                json={
+                    "model": self.selected_llm_model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",          # ← FORZA output JSON a livello di Ollama
+                    "options": {
+                        "temperature": 0.1,
+                        "num_predict": 512,
+                        "num_ctx": 2048,
+                    }
+                },
+                timeout=120
+            )
+            if response.status_code != 200:
+                self.logger.log(f"LLM query parse: status {response.status_code}", "WARNING")
+                return None
+
+            raw_text = response.json().get('response', '').strip()
+            self.logger.log(f"LLM raw response: {raw_text[:300]}")
+
+            # Pulizia: rimuovi eventuale markdown ```json ... ```
+            cleaned = raw_text
+            cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned)
+            cleaned = re.sub(r'\s*```$', '', cleaned)
+            cleaned = cleaned.strip()
+
+            # Prova a estrarre il JSON anche se c'è testo prima/dopo
+            # Cerca il primo { e l'ultimo }
+            start = cleaned.find('{')
+            end = cleaned.rfind('}')
+            if start != -1 and end != -1 and end > start:
+                cleaned = cleaned[start:end + 1]
+
+            parsed = json.loads(cleaned)
+
+            # Validazione: verifica che ci sia contenuto REALE (non solo struttura vuota)
+            has_skills = any(s.strip() for s in parsed.get("skills", []))
+            has_tech = any(s.strip() for s in parsed.get("technologies", []))
+            has_title = bool(parsed.get("title", "").strip())
+            has_summary = bool(parsed.get("summary", "").strip())
+            has_experience = any(
+                exp.get("description", "").strip() or exp.get("company", "").strip()
+                for exp in parsed.get("experience", [])
+            )
+
+            has_content = has_skills or has_tech or has_title or has_summary or has_experience
+
+            if not has_content:
+                self.logger.log("LLM query parse: JSON strutturalmente ok ma vuoto → fallback regex", "WARNING")
+                return None
+
+            # Assicura struttura completa (merge con template vuoto)
+            template = {
+                "name": "",
+                "title": "",
+                "summary": "",
+                "skills": [],
+                "technologies": [],
+                "certifications": [],
+                "education": {"degree": "", "year": None, "program": ""},
+                "experience": []
+            }
+            template.update(parsed)
+
+            # Assicura che skills e technologies siano liste
+            for field in ["skills", "technologies", "certifications"]:
+                if isinstance(template[field], str):
+                    template[field] = [s.strip() for s in template[field].split(",") if s.strip()]
+
+            self.logger.log(f"LLM query parse OK: skills={template['skills']}, "
+                        f"title={template['title']}")
+            return template
+
+        except json.JSONDecodeError as e:
+            self.logger.log(f"LLM query parse: JSON non valido - {e}", "WARNING")
+            return None
+        except requests.exceptions.ConnectionError:
+            self.logger.log("LLM query parse: Ollama non disponibile", "WARNING")
+            return None
+        except requests.exceptions.Timeout:
+            self.logger.log("LLM query parse: timeout", "WARNING")
+            return None
+        except Exception as e:
+            self.logger.log(f"LLM query parse: errore - {e}", "WARNING")
+            return None
+
     def query_json_to_sections(self, query_json):
         """
         Converte il JSON della query nelle 4 sezioni pesate.
@@ -1025,14 +1131,11 @@ class CVSearchApp:
 
     def build_query_embedding(self, query_text):
         """
-        Pipeline completa: query → JSON → 4 sezioni → 4 embeddings → media pesata.
+        Pipeline completa: query → JSON (via LLM o regex) → 4 sezioni → embedding pesato.
         
-        Usa gli STESSI pesi di create_embeddings_weighted.py:
-          skills=40%, experience=40%, education=15%, summary=5%
-        
-        Ritorna (embedding, query_json, sections_dict)
+        1. Prova LLM per parsing intelligente del testo libero
+        2. Se LLM fallisce → fallback al parser regex (parse_query_to_json)
         """
-        # Stessi pesi di create_embeddings_weighted.py
         weights = {
             'skills': 0.40,
             'experience': 0.40,
@@ -1040,11 +1143,25 @@ class CVSearchApp:
             'summary': 0.05
         }
 
-        # 1. Parse query → JSON strutturato
-        query_json = self.parse_query_to_json(query_text)
+        # ── TENTATIVO 1: Parsing con LLM ────────────────────────
+        self.append_result("🤖 Parsing query con LLM...\n")
+        self.root.update()
+
+        query_json = self.parse_query_with_llm(query_text)
+
+        if query_json:
+            parse_method = "LLM"
+            self.append_result("✅ Parsing LLM riuscito\n\n")
+        else:
+            # ── FALLBACK: Parser regex deterministico ────────────
+            parse_method = "Regex (fallback)"
+            self.append_result("⚠️ LLM non disponibile, uso parser regex\n\n")
+            query_json = self.parse_query_to_json(query_text)
+
+        self.logger.log(f"Query parsed via: {parse_method}")
         self.logger.log(f"Query JSON: {json.dumps(query_json, ensure_ascii=False)[:500]}")
 
-        # 2. JSON → 4 sezioni (stessa funzione di create_embeddings_weighted)
+        # 2. JSON → 4 sezioni
         sections = self.query_json_to_sections(query_json)
 
         # 3. Log sezioni per debug
@@ -1057,23 +1174,21 @@ class CVSearchApp:
         section_embeddings = {}
         for section_name in ['skills', 'experience', 'education', 'summary']:
             emb = self.model.encode([sections[section_name]])['dense_vecs']
-            section_embeddings[section_name] = emb[0]  # shape: (dim,)
+            section_embeddings[section_name] = emb[0]
 
-        # 5. Combinazione pesata (identica a create_weighted_embeddings)
+        # 5. Combinazione pesata
         embedding_dim = section_embeddings['skills'].shape[0]
         query_embedding = np.zeros(embedding_dim)
 
         for section_name, weight in weights.items():
             query_embedding += section_embeddings[section_name] * weight
 
-        # Reshape per compatibilità con cosine_similarity: (1, dim)
         query_embedding = query_embedding.reshape(1, -1)
 
         self.logger.log(f"Query embedding shape: {query_embedding.shape}")
 
         return query_embedding, query_json, sections
-
-      
+          
     def load_templates(self):
         """Carica i template disponibili dalla cartella"""
         self.available_templates = get_available_templates()
