@@ -3,7 +3,9 @@
 INSTALLAZIONE RICHIESTA:
 pip install customtkinter
 """
-
+import time
+from sklearn.manifold import TSNE
+import umap
 import customtkinter as ctk
 import threading
 import matplotlib.pyplot as plt
@@ -601,6 +603,7 @@ class CVSearchApp:
         self.root = ctk.CTk()
         self.root.title("CV Search Engine - Modern UI")
         self.root.geometry("1200x850")
+        self.root.minsize(900, 650)
         
         # Logger
         self.logger = Logger()
@@ -639,7 +642,11 @@ class CVSearchApp:
         content_frame.grid_rowconfigure(0, weight=1)
         
         # ===== COLONNA SINISTRA: Query e Controlli =====
-        left_column = ctk.CTkFrame(content_frame, corner_radius=10)
+        left_column = ctk.CTkScrollableFrame(
+            content_frame,
+            corner_radius=10,
+            label_text="",           # nessuna etichetta in alto
+        )
         left_column.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
         
         # SEZIONE GENERAZIONE DIRETTA
@@ -678,7 +685,7 @@ class CVSearchApp:
                                         wrap="word",
                                         height=100)
         self.query_text.pack(fill="x", padx=10, pady=(0, 10))
-        self.query_text.insert("1.0", "Skills: ...\nIndustry: ...\nOffice: ...\n Level: ... ")
+        self.query_text.insert("1.0", "Cerco candidati competenti in Python, Google, AWS, con esperienza nel settore Energy. Formazione Scientifica.")
        
         control_content = ctk.CTkFrame(left_column, fg_color="transparent")
         control_content.pack(fill="x", padx=10, pady=(0, 10))
@@ -717,7 +724,7 @@ class CVSearchApp:
         llm_frame = ctk.CTkFrame(control_content, fg_color=("gray90", "gray20"), corner_radius=8)
         llm_frame.pack(fill="x", pady=(0, 10))
 
-        ctk.CTkLabel(llm_frame, text="🤖 Modello LLM:",
+        ctk.CTkLabel(llm_frame, text="🤖 Modello LLM (per interpretazione query e analisi candidati - se selezionata):",
                     font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
 
         self.llm_var = ctk.StringVar(value="llama3.2:1b")
@@ -734,6 +741,47 @@ class CVSearchApp:
             height=32
         )
         self.llm_combo.pack(fill="x", padx=10, pady=(0, 10))
+
+        self.llm_analysis_var = ctk.BooleanVar(value=False)
+        self.llm_analysis_check = ctk.CTkCheckBox(
+            llm_frame,
+            text="Abilita analisi LLM dei candidati individuati (con conseguente aumento dei tempi e2e di elaborazione)",
+            variable=self.llm_analysis_var,
+            font=ctk.CTkFont(size=11),
+            checkbox_width=20,
+            checkbox_height=20,
+            corner_radius=4,
+        )
+        self.llm_analysis_check.pack(anchor="w", padx=10, pady=(0, 10))
+        self.pca_plot_var = ctk.BooleanVar(value=False)
+        self.pca_plot_check = ctk.CTkCheckBox(
+            llm_frame,
+            text="Mostra grafico 3D",
+            variable=self.pca_plot_var,
+            font=ctk.CTkFont(size=11),
+            checkbox_width=20,
+            checkbox_height=20,
+            corner_radius=4,
+        )
+        self.pca_plot_check.pack(anchor="w", padx=10, pady=(0, 10))
+        self.dim_method_label = ctk.CTkLabel(
+            llm_frame,
+            text="Metodo riduzione dimensionale per il grafico 3D:",
+            font=ctk.CTkFont(size=11, weight="bold"),
+        )
+        self.dim_method_label.pack(anchor="w", padx=10, pady=(5, 2))
+
+        self.dim_method_var = ctk.StringVar(value="UMAP")
+        self.dim_method_combo = ctk.CTkComboBox(
+            llm_frame,
+            variable=self.dim_method_var,
+            values=["PCA", "t-SNE", "UMAP"],
+            font=ctk.CTkFont(size=11),
+            dropdown_font=ctk.CTkFont(size=10),
+            height=32,
+            state="readonly",
+        )
+        self.dim_method_combo.pack(fill="x", padx=10, pady=(0, 10))
 
         # Label info modello selezionato
         #self.llm_info_label = ctk.CTkLabel(
@@ -1365,103 +1413,138 @@ Rispondi in italiano, formato chiaro."""
         except Exception as e:
             return f"⚠️ Errore analisi LLM: {str(e)[:100]}"
 
-    def plot_pca_3d(self, query_embedding, top_indices, similarities):
-        """Visualizza grafico 3D PCA con query e candidati"""
+    def plot_3d(self, query_embedding, top_indices, similarities):
+        """Visualizza grafico 3D con PCA, t-SNE o UMAP"""
         try:
-            # Combina embeddings: query + tutti i CV
+            method = self.dim_method_var.get()
+            self.logger.log(f"Generazione grafico 3D con metodo: {method}")
+
+            # Combina query + tutti i CV
             all_embeddings = np.vstack([query_embedding, self.cv_embeddings])
-            
-            # Applica PCA per ridurre a 3 dimensioni
-            pca = PCA(n_components=3)
-            embeddings_3d = pca.fit_transform(all_embeddings)
-            
-            # Separa query (primo punto) dagli altri
+            n_samples = all_embeddings.shape[0]
+
+            # ── Riduzione a 3D ──────────────────────────────────
+            if method == "PCA":
+                reducer = PCA(n_components=3)
+                embeddings_3d = reducer.fit_transform(all_embeddings)
+                variance_info = (
+                    f"Varianza spiegata: {sum(reducer.explained_variance_ratio_) * 100:.1f}%"
+                )
+                axis_labels = [
+                    f"PC{i+1} ({reducer.explained_variance_ratio_[i]*100:.1f}%)"
+                    for i in range(3)
+                ]
+
+            elif method == "t-SNE":
+                perplexity = min(30, max(2, n_samples - 1))
+                reducer = TSNE(
+                    n_components=3,
+                    perplexity=perplexity,
+                    random_state=42,
+                    n_iter=1000,
+                    init="pca",
+                )
+                embeddings_3d = reducer.fit_transform(all_embeddings)
+                variance_info = f"Perplexity: {perplexity}"
+                axis_labels = ["t-SNE 1", "t-SNE 2", "t-SNE 3"]
+
+            elif method == "UMAP":
+                n_neighbors = min(15, max(2, n_samples - 1))
+                reducer = umap.UMAP(
+                    n_components=3,
+                    n_neighbors=n_neighbors,
+                    min_dist=0.1,
+                    metric="cosine",
+                    random_state=42,
+                )
+                embeddings_3d = reducer.fit_transform(all_embeddings)
+                variance_info = f"n_neighbors: {n_neighbors}, min_dist: 0.1"
+                axis_labels = ["UMAP 1", "UMAP 2", "UMAP 3"]
+
+            else:
+                self.logger.log(f"Metodo sconosciuto: {method}", "ERROR")
+                return
+
+            # ── Separa query dagli altri ────────────────────────
             query_3d = embeddings_3d[0]
             cv_embeddings_3d = embeddings_3d[1:]
-            
-            # Crea figura
+
+            # ── Plot ────────────────────────────────────────────
             fig = plt.figure(figsize=(12, 9))
             ax = fig.add_subplot(111, projection='3d')
-            
-            # Plot tutti i CV (grigi e piccoli)
-            ax.scatter(cv_embeddings_3d[:, 0], 
-                      cv_embeddings_3d[:, 1], 
-                      cv_embeddings_3d[:, 2],
-                      c='lightgray', 
-                      marker='o', 
-                      s=20, 
-                      alpha=0.3,
-                      edgecolors='black',    # ← Bordo grigio scuro
-                      linewidth=2.0,         # ← Spessore bordo
-                      label='Altri CV')
-            
-            # Plot top candidati (colorati per similarità)
+
+            # Tutti i CV (grigi)
+            ax.scatter(
+                cv_embeddings_3d[:, 0],
+                cv_embeddings_3d[:, 1],
+                cv_embeddings_3d[:, 2],
+                c='lightgray', marker='o', s=20, alpha=0.3,
+                edgecolors='black', linewidth=2.0,
+                label='Altri CV',
+            )
+
+            # Top candidati (colorati per similarità)
             top_embeddings_3d = cv_embeddings_3d[top_indices]
             top_similarities = similarities[top_indices]
-            
-            scatter = ax.scatter(top_embeddings_3d[:, 0],
-                                top_embeddings_3d[:, 1],
-                                top_embeddings_3d[:, 2],
-                                c=top_similarities,
-                                cmap='RdYlGn',
-                                marker='o',
-                                s=150,
-                                alpha=0.8,
-                                edgecolors='black',
-                                linewidth=1.5,
-                                label='Top Candidati')
-            
-            # Aggiungi etichette per i top candidati
-            for idx, (i, sim) in enumerate(zip(top_indices, top_similarities)):
+
+            scatter = ax.scatter(
+                top_embeddings_3d[:, 0],
+                top_embeddings_3d[:, 1],
+                top_embeddings_3d[:, 2],
+                c=top_similarities, cmap='RdYlGn',
+                marker='o', s=150, alpha=0.8,
+                edgecolors='black', linewidth=1.5,
+                label='Top Candidati',
+            )
+
+            # Etichette candidati
+            for idx_pos, (i, sim) in enumerate(zip(top_indices, top_similarities)):
                 label = self.cv_labels[i]
-                ax.text(top_embeddings_3d[idx, 0],
-                       top_embeddings_3d[idx, 1],
-                       top_embeddings_3d[idx, 2],
-                       f'{label}\n({sim:.3f})',
-                       fontsize=8,
-                       bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.7))
-            
-            # Plot query (stella rossa grande)
-            ax.scatter(query_3d[0], query_3d[1], query_3d[2],
-                      c='red',
-                      marker='*',
-                      s=500,
-                      edgecolors='black',
-                      linewidth=2,
-                      label='Query',
-                      zorder=1000)
-            
-            ax.text(query_3d[0], query_3d[1], query_3d[2],
-                   '  QUERY',
-                   fontsize=12,
-                   fontweight='bold',
-                   color='red')
-            
-            # Configura assi
-            ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)', fontsize=10)
-            ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)', fontsize=10)
-            ax.set_zlabel(f'PC3 ({pca.explained_variance_ratio_[2]*100:.1f}%)', fontsize=10)
-            ax.set_title('Visualizzazione 3D PCA: Query e Candidati\nVarianza spiegata: {:.1f}%'.format(
-                sum(pca.explained_variance_ratio_) * 100), fontsize=14, fontweight='bold')
-            
-            # Colorbar
+                ax.text(
+                    top_embeddings_3d[idx_pos, 0],
+                    top_embeddings_3d[idx_pos, 1],
+                    top_embeddings_3d[idx_pos, 2],
+                    f'{label}\n({sim:.3f})',
+                    fontsize=8,
+                    bbox=dict(boxstyle='round,pad=0.3',
+                              facecolor='yellow', alpha=0.7),
+                )
+
+            # Query (stella rossa)
+            ax.scatter(
+                query_3d[0], query_3d[1], query_3d[2],
+                c='red', marker='*', s=500,
+                edgecolors='black', linewidth=2,
+                label='Query', zorder=1000,
+            )
+            ax.text(
+                query_3d[0], query_3d[1], query_3d[2],
+                '  QUERY', fontsize=12, fontweight='bold', color='red',
+            )
+
+            # Assi e titolo
+            ax.set_xlabel(axis_labels[0], fontsize=10)
+            ax.set_ylabel(axis_labels[1], fontsize=10)
+            ax.set_zlabel(axis_labels[2], fontsize=10)
+            ax.set_title(
+                f'Visualizzazione 3D ({method}): Query e Candidati\n{variance_info}',
+                fontsize=14, fontweight='bold',
+            )
+
             cbar = plt.colorbar(scatter, ax=ax, pad=0.1, shrink=0.8)
             cbar.set_label('Similarità con Query', fontsize=10)
-            
-            # Leggenda
             ax.legend(loc='upper left', fontsize=10)
-            
-            # Griglia
             ax.grid(True, alpha=0.3)
-            
+
             plt.tight_layout()
             plt.show()
-            
-            self.logger.log("Grafico PCA 3D generato con successo")
-            
+
+            self.logger.log(f"Grafico 3D ({method}) generato con successo")
+
         except Exception as e:
-            self.logger.log(f"Errore generazione grafico PCA: {e}", "ERROR")
-            messagebox.showerror("Errore", f"Impossibile generare il grafico PCA:\n{e}")
+            self.logger.log(f"Errore generazione grafico 3D: {e}", "ERROR")
+            messagebox.showerror("Errore",
+                                 f"Impossibile generare il grafico 3D:\n{e}")
 
 
     def generate_direct_cv(self):
@@ -1588,6 +1671,7 @@ Rispondi in italiano, formato chiaro."""
             return
         
         try:
+            start_time = time.time()
             # Disabilita bottone durante elaborazione
             self.search_button.configure(state="disabled", text="⏳ Elaborazione...")
             self.root.update()
@@ -1632,36 +1716,41 @@ Rispondi in italiano, formato chiaro."""
                 self.append_result(f"  {rank}. {label}\n     Similarità: {sim:.4f} ({sim*100:.2f}%)\n\n")
                 self.logger.log(f"Candidato {rank}: {label} (sim={sim:.4f})")
 
-            # ANALISI LLM PER OGNI CANDIDATO
-            self.append_result("\n🤖 ANALISI LLM DEI CANDIDATI\n")
-            self.append_result("─"*80 + "\n")
-            self.status_label.configure(text="⏳ Analisi LLM in corso...", text_color="orange")
+            # ANALISI LLM (opzionale)
+            if self.llm_analysis_var.get():
+                self.append_result("\n🤖 ANALISI LLM DEI CANDIDATI\n")
+                self.append_result("─"*80 + "\n")
+                self.status_label.configure(text="⏳ Analisi LLM in corso...", text_color="orange")
 
-            extractor_temp = PPTXToJSONExtractor(logger=self.logger)
+                extractor_temp = PPTXToJSONExtractor(logger=self.logger)
 
-            for rank, (idx, label) in enumerate(zip(top_candidates, selected_labels), 1):
-                # Carica JSON del candidato
-                json_file = self.find_existing_json(label, extractor_temp.cv_json_folder)
-                
-                if json_file and json_file.exists():
-                    with open(json_file, 'r', encoding='utf-8') as f:
-                        cv_data = json.load(f)
-                    
-                    # Analisi LLM
-                    self.append_result(f"\n[{rank}] {label}:\n")
-                    self.root.update()
-                    
-                    analysis = self.analyze_cv_with_llm(cv_data, query, similarities[idx])
-                    self.append_result(f"{analysis}\n")
-                    self.append_result("─"*40 + "\n")
-                    self.logger.log(f"Analisi LLM completata per: {label}")
-                else:
-                    self.append_result(f"\n[{rank}] {label}: ⚠️ JSON non disponibile per analisi\n")
+                for rank, (idx, label) in enumerate(zip(top_candidates, selected_labels), 1):
+                    json_file = self.find_existing_json(label, extractor_temp.cv_json_folder)
 
-            # Visualizza grafico 3D PCA (FUORI DAL LOOP)
-            self.append_result("\n📈 Generazione grafico PCA 3D...\n")
-            self.root.update()
-            self.plot_pca_3d(query_embedding, top_candidates, similarities)
+                    if json_file and json_file.exists():
+                        with open(json_file, 'r', encoding='utf-8') as f:
+                            cv_data = json.load(f)
+
+                        self.append_result(f"\n[{rank}] {label}:\n")
+                        self.root.update()
+
+                        analysis = self.analyze_cv_with_llm(cv_data, query, similarities[idx])
+                        self.append_result(f"{analysis}\n")
+                        self.append_result("─"*40 + "\n")
+                        self.logger.log(f"Analisi LLM completata per: {label}")
+                    else:
+                        self.append_result(f"\n[{rank}] {label}: ⚠️ JSON non disponibile per analisi\n")
+            else:
+                self.append_result("\nℹ️  Analisi LLM saltata (checkbox non selezionata)\n")
+                self.logger.log("Analisi LLM saltata per scelta utente")
+
+            if self.pca_plot_var.get():
+                self.append_result(f"\n📈 Generazione grafico 3D ({self.dim_method_var.get()})...\n")
+                self.root.update()
+                self.plot_3d(query_embedding, top_candidates, similarities)
+            else:
+                self.append_result("\nℹ️  Grafico 3D saltato (checkbox non selezionata)\n")
+                self.logger.log("Grafico 3D saltato per scelta utente")
             
             # STEP 2
             self.status_label.configure(text="⏳ Step 2/3: Verifica JSON...", text_color="orange")
@@ -1729,6 +1818,15 @@ Rispondi in italiano, formato chiaro."""
             # RIEPILOGO
             self.append_result("\n" + "═"*80 + "\n")
             self.append_result("✨ PIPELINE COMPLETATA\n")
+            elapsed = time.time() - start_time
+            minutes, seconds = divmod(elapsed, 60)
+            if minutes > 0:
+                time_str = f"{int(minutes)}m {seconds:.1f}s"
+            else:
+                time_str = f"{seconds:.1f}s"
+
+            self.append_result(f"⏱️  Tempo totale: {time_str}\n")
+            self.logger.log(f"Tempo totale pipeline: {time_str}")
             self.append_result("═"*80 + "\n")
             self.append_result(f"✅ Candidati processati: {len(selected_labels)}\n")
             self.append_result(f"✅ JSON generati/riutilizzati: {len(json_files)}\n")
