@@ -149,12 +149,12 @@ ollama pull llama3.2:1b
 
 #### Raccolta di massa
 
-Il processo consigliato per raccogliere i CV in un'azienda è:
+Il processo consigliato per raccogliere i dati/CV in formato json è:
 
-1. Inviare una comunicazione a tutti i dipendenti/consulenti
+1. Inviare una comunicazione a tutti gli interessati
 2. Ogni persona compila il proprio CV in formato JSON tramite il tool online:  
    **👉 [https://pierpaolopalmiotti.github.io/cv-json-generator/](https://pierpaolopalmiotti.github.io/cv-json-generator/)**
-3. I file JSON generati vengono salvati in una **cartella condivisa** (es. SharePoint, Google Drive, cartella di rete)
+3. il JSON viene copiato, incollato e salvato in una **cartella condivisa** (es. SharePoint, Google Drive, cartella di rete)
 4. L'admin raccoglie tutti i JSON e li copia nella cartella `input/cv_json/` del progetto
 
 #### Struttura JSON attesa
@@ -236,25 +236,6 @@ I placeholder, o TAG, supportati sono:
 
 > La maggior parte del tempo è download. Una volta completato il setup, le esecuzioni successive partono in pochi secondi.
 
-### Tempistiche di una singola esecuzione della pipeline
-
-| Operazione | PC Base (8GB) | PC Medio (16GB) | PC con GPU |
-|---|---|---|---|
-| Avvio applicazione (caricamento BGE-M3) | 30-60 sec | 15-30 sec | 5-10 sec |
-| Parsing query con LLM | 20-40 sec | 10-25 sec | 3-8 sec |
-| Calcolo similarità + ranking | < 1 sec | < 1 sec | < 1 sec |
-| Analisi LLM per candidato *(opzionale)* | 30-60 sec/cad | 15-30 sec/cad | 5-10 sec/cad |
-| Grafico 3D *(opzionale)* | 1-3 sec | < 1 sec | < 1 sec |
-| Generazione CV PowerPoint per candidato | < 1 sec/cad | < 1 sec/cad | < 1 sec/cad |
-
-**Esempio concreto — ricerca di 3 candidati:**
-
-| Configurazione | Senza opzioni | Con analisi LLM | Con LLM + grafico 3D |
-|---|---|---|---|
-| PC Base (8GB) | ~30 sec | ~3-4 min | ~3-4 min |
-| PC Medio (16GB) | ~15 sec | ~1-2 min | ~1-2 min |
-| PC con GPU | ~5 sec | ~20-30 sec | ~20-30 sec |
-
 > Il collo di bottiglia è l'analisi LLM candidato per candidato. Se non serve una valutazione qualitativa, disabilitarla riduce i tempi dell'80-90%.
 
 ### Tempistiche di generazione embeddings
@@ -262,9 +243,9 @@ I placeholder, o TAG, supportati sono:
 | Numero CV | PC Base (8GB) | PC Medio (16GB) | PC con GPU |
 |---|---|---|---|
 | 10 CV | 3-5 min | 1-3 min | 30-60 sec |
-| 50 CV | 15-25 min | 7-15 min | 2-3 min |
-| 100 CV | 20-40 min | 10-20 min | 3-5 min |
-| 500 CV | 2-3 ore | 1-2 ore | 15-25 min |
+| 50 CV | 15 min | 7-15 min | 2-3 min |
+| 100 CV | 20 min | 10-20 min | 3-5 min |
+| 500 CV | 2 ore | 1-2 ore | 15-25 min |
 
 > **Nota:** Il primo avvio di Ollama con un nuovo modello è più lento perché deve caricare i pesi in memoria. Le esecuzioni successive sono significativamente più veloci perché il modello resta in cache.
 
