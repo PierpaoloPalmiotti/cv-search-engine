@@ -187,7 +187,7 @@ Ogni file JSON deve avere questa struttura:
 ### 3. Generazione Embeddings
 
 ```bash
-cd src
+cd codes
 python rag_bge-m3_v2.py
 ```
 
