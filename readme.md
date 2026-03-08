@@ -141,13 +141,15 @@ pip install -r requirements.txt
 # Installa Ollama da https://ollama.com
 # Poi scarica il modello:
 ollama pull llama3.2:3b
+# oppure
+ollama pull llama3.2:1b
 ```
 
 ### 2. Preparazione dei CV
 
 #### Raccolta di massa
 
-Il processo consigliato per raccogliere i CV in azienda è:
+Il processo consigliato per raccogliere i CV in un'azienda è:
 
 1. Inviare una comunicazione a tutti i dipendenti/consulenti
 2. Ogni persona compila il proprio CV in formato JSON tramite il tool online:  
@@ -327,7 +329,7 @@ Il sistema attuale carica tutti gli embeddings in memoria come array NumPy (file
 ollama serve
 
 # Avvia l'applicazione
-cd src
+cd cv-search-engine\\codes
 python cv_search_app_v1.py
 ```
 
@@ -341,7 +343,7 @@ python cv_search_app_v1.py
 2. Seleziona il template PowerPoint
 3. Seleziona il modello LLM (consigliato: `llama3.2:3b`)
 4. **(Opzionale)** Spunta **"Abilita analisi LLM dei candidati"** per ottenere una valutazione dettagliata di ogni candidato (punti di forza, gap, idoneità). Questa opzione aumenta significativamente i tempi di elaborazione.
-5. **(Opzionale)** Spunta **"Mostra grafico 3D"** e seleziona il metodo di riduzione dimensionale (PCA, t-SNE o UMAP) per visualizzare la posizione della query rispetto ai CV nello spazio degli embeddings.
+5. **(Opzionale)** Spunta **"Mostra grafico 3D"** e seleziona il metodo di riduzione dimensionale (PCA, t-SNE o UMAP) per visualizzare la posizione della query rispetto ai CV nello spazio degli embeddings. Si Congliglia in ordine: UMAP, t-SNE, PCA. 
 6. Imposta il numero di candidati da estrarre
 7. Clicca **"Avvia Ricerca e Genera CV"**
 
@@ -361,7 +363,7 @@ Level: Senior
 
 ### Generazione Diretta CV
 
-Se conosci già il candidato, inserisci nome e cognome nel campo dedicato e clicca **"Genera CV Diretto"** per generare il CV senza ricerca.
+Se conosci già il candidato, inserisci nome e cognome nel campo dedicato e clicca **"Genera CV Diretto"** per generare il draft ppt CV senza ricerca.
 
 ### Opzioni di Visualizzazione 3D
 
