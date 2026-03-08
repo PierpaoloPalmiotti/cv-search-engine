@@ -108,9 +108,9 @@ cv-search-engine/
 ├── log_executions/           ← File di log
 │   └── cv_search_log.txt
 │
-├── src/
-│   ├── cv_search_app_modern.py      ← Applicazione principale
-│   └── create_embeddings_weighted.py ← Script generazione embeddings
+├── codes/
+│   ├── cv_search_app_v1.py      ← Applicazione principale
+│   └── embedding_generators/rag_bge-m3_v2.py ← Script generazione embeddings
 │
 └── README.md
 ```
