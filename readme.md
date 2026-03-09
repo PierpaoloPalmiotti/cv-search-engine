@@ -1,4 +1,4 @@
-# 🔍 CV Search Engine — RAG Pipeline per Selezione Candidati
+# 🔍 CV Search Engine — RAG Pipeline
 Tempo di lettura: 10-15 min
 
 Sistema di ricerca e generazione CV basato su **Retrieval-Augmented Generation (RAG)**.  
