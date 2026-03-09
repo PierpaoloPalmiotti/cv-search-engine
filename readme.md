@@ -122,7 +122,28 @@ cv-search-engine/
 
 > **Il setup va eseguito una sola volta.** Successivamente, gli embeddings andranno ricreati solo quando vengono aggiunti nuovi CV.
 
-### 1. Installazione Python
+### 1. Clonare il Repository
+
+Verifica che Git sia installato:
+
+```bash
+git --version
+```
+
+Se non è installato, scaricalo da: **👉 [https://git-scm.com/downloads](https://git-scm.com/downloads)**
+
+> **Windows:** durante l'installazione, lascia le opzioni di default. Git verrà aggiunto automaticamente al PATH.
+
+Clona il repository e posizionati nella cartella del progetto:
+
+```bash
+git clone <URL_REPOSITORY>
+cd cv-search-engine
+```
+
+> Sostituisci `<URL_REPOSITORY>` con l'URL effettivo del repository (es. `https://github.com/org/cv-search-engine.git` o l'equivalente Azure DevOps/GitLab).
+
+### 2. Installazione Python
 
 Il progetto richiede **Python 3.10 o superiore**.
 
@@ -145,15 +166,12 @@ Dopo l'installazione, verifica che anche `pip` sia disponibile:
 pip --version
 ```
 
-### 2. Creazione Virtual Environment (venv)
+### 3. Creazione Virtual Environment (venv)
 
 È **fortemente consigliato** usare un virtual environment per isolare le dipendenze del progetto ed evitare conflitti con altri pacchetti Python installati nel sistema.
 
 ```bash
-# Posizionati nella cartella radice del progetto
-cd cv-search-engine
-
-# Crea il virtual environment
+# Assicurati di essere nella cartella radice del progetto (cv-search-engine/)
 python -m venv venv
 ```
 
@@ -177,7 +195,7 @@ Quando il venv è attivo, vedrai il prefisso `(venv)` nel terminale. Da questo m
 > **⚠️ PowerShell:** se ricevi un errore relativo alle execution policy, esegui prima:  
 > `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
-### 3. Installazione Dipendenze Python
+### 4. Installazione Dipendenze Python
 
 Con il venv attivo, installa le dipendenze:
 
@@ -191,7 +209,7 @@ Oppure tramite requirements.txt:
 pip install -r requirements.txt
 ```
 
-### 4. Installazione Ollama (LLM locale)
+### 5. Installazione Ollama (LLM locale)
 
 ```bash
 # Installa Ollama da https://ollama.com
@@ -201,7 +219,7 @@ ollama pull llama3.2:3b
 ollama pull llama3.2:1b
 ```
 
-### 5. Preparazione dei CV
+### 6. Preparazione dei CV
 
 #### Raccolta di massa
 
@@ -240,7 +258,7 @@ Ogni file JSON deve avere questa struttura:
 }
 ```
 
-### 6. Generazione Embeddings
+### 7. Generazione Embeddings
 
 ```bash
 cd codes
@@ -255,7 +273,7 @@ Questo script:
 
 > **⚠️ Gli embeddings vanno ricreati ogni volta che si aggiungono nuovi CV di nuovi candidati o se ci sono variazioni in quelli già esistenti. Valutare quindi una creazione automatica degli embedding ogni N mesi**
 
-### 7. Template PowerPoint
+### 8. Template PowerPoint
 
 Posiziona almeno un template `.pptx` nella cartella `input/template/`.  
 Tale template verrà utilizzato come base per la creazione del draft finale con le informazioni dei candidati estratti. 
@@ -281,15 +299,16 @@ I placeholder, o TAG, supportati sono:
 
 | Fase | PC Base (8GB RAM, no GPU) | PC Medio (16GB RAM, no GPU) | PC con GPU |
 |---|---|---|---|
-| 1. Lettura README e comprensione progetto | ~10 min | ~10 min | ~10 min |
-| 2. Installazione Python + creazione venv | 5-10 min | 5-10 min | 5-10 min |
-| 3. Installazione dipendenze (`pip install`) | 5-10 min | 5-10 min | 5-10 min |
-| 4. Download modello BGE-M3 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
-| 5. Installazione Ollama + download llama3.2 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
-| 6. Preparazione CV JSON (se non già pronti) | variabile | variabile | variabile |
-| 7. Generazione embeddings (10 CV) | 3-5 min | 1-3 min | 30-60 sec |
-| 8. Primo avvio app + prima ricerca | 2-3 min | 1-2 min | 30-60 sec |
-| **TOTALE (escluso punto 6)** | **~45-70 min** | **~35-55 min** | **~30-50 min** |
+| 1. Installazione Git + clone repository | 2-5 min | 2-5 min | 2-5 min |
+| 2. Lettura README e comprensione progetto | ~10 min | ~10 min | ~10 min |
+| 3. Installazione Python + creazione venv | 5-10 min | 5-10 min | 5-10 min |
+| 4. Installazione dipendenze (`pip install`) | 5-10 min | 5-10 min | 5-10 min |
+| 5. Download modello BGE-M3 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
+| 6. Installazione Ollama + download llama3.2 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
+| 7. Preparazione CV JSON (se non già pronti) | variabile | variabile | variabile |
+| 8. Generazione embeddings (10 CV) | 3-5 min | 1-3 min | 30-60 sec |
+| 9. Primo avvio app + prima ricerca | 2-3 min | 1-2 min | 30-60 sec |
+| **TOTALE (escluso punto 7)** | **~45-75 min** | **~35-60 min** | **~30-55 min** |
 
 > La maggior parte del tempo è download. Una volta completato il setup, le esecuzioni successive partono in pochi secondi.
 
@@ -456,6 +475,7 @@ Per ogni ricerca, il sistema produce:
 
 | Problema | Soluzione |
 |---|---|
+| `git` non riconosciuto | Installa Git da [git-scm.com/downloads](https://git-scm.com/downloads) e riavvia il terminale |
 | `python` non riconosciuto | Verifica di aver spuntato "Add Python to PATH" durante l'installazione. In alternativa, usa `python3`. Su Windows puoi reinstallare Python spuntando l'opzione. |
 | Errore creazione venv | Assicurati di usare Python 3.10+. Su Debian/Ubuntu potrebbe servire: `sudo apt install python3-venv` |
 | PowerShell blocca l'attivazione venv | Esegui: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` |
