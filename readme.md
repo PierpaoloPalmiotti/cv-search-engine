@@ -483,7 +483,7 @@ Per ogni ricerca, il sistema produce:
 | "bind: Only one usage..." | Ollama è già in esecuzione, tutto ok |
 | Skills vuote nel parsing | Usa `llama3.2:3b`, non 1b |
 | Timeout LLM | Aumenta timeout o aspetta il primo caricamento del modello |
-| Embeddings mancanti | Esegui `python create_embeddings_weighted.py` |
+| Embeddings mancanti | Esegui `python rag_bge-m3_v2.py` |
 | RAM insufficiente | Usa `llama3.2:1b` o chiudi applicazioni in background |
 | Errore import umap | Installa con `pip install umap-learn` (non `umap`) |
 
