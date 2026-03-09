@@ -471,7 +471,7 @@ Per ogni ricerca, il sistema produce:
 |---|---|
 | `git` non riconosciuto | Installa Git da [git-scm.com/downloads](https://git-scm.com/downloads) e riavvia il terminale |
 | `python` non riconosciuto | Verifica di aver spuntato "Add Python to PATH" durante l'installazione. In alternativa, usa `python3`. Su Windows puoi reinstallare Python spuntando l'opzione. |
-| Errore creazione venv | Assicurati di usare Python 3.10+. Su Debian/Ubuntu potrebbe servire: `sudo apt install python3-venv` |
+| Errore creazione venv | Assicurati di usare Python al di sotto della versione 3.12. Su Debian/Ubuntu potrebbe servire: `sudo apt install python3-venv` |
 | PowerShell blocca l'attivazione venv | Esegui: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` |
 | "LLM non disponibile" | Verifica che Ollama sia attivo: `ollama serve` |
 | "bind: Only one usage..." | Ollama è già in esecuzione, tutto ok |

@@ -7,3 +7,4 @@ python-pptx>=0.6.21
 FlagEmbedding>=1.2.0
 requests>=2.31.0
 umap-learn>=0.5.0
+transformers==4.44.2
