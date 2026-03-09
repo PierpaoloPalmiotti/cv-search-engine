@@ -200,12 +200,6 @@ Quando il venv è attivo, vedrai il prefisso `(venv)` nel terminale. Da questo m
 Con il venv attivo, installa le dipendenze:
 
 ```bash
-pip install customtkinter numpy scikit-learn matplotlib FlagEmbedding python-pptx requests umap-learn
-```
-
-Oppure tramite requirements.txt:
-
-```bash
 pip install -r requirements.txt
 ```
 
