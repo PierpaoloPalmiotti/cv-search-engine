@@ -122,9 +122,64 @@ cv-search-engine/
 
 > **Il setup va eseguito una sola volta.** Successivamente, gli embeddings andranno ricreati solo quando vengono aggiunti nuovi CV.
 
-### 1. Requisiti Software
+### 1. Installazione Python
 
-**Python 3.10+** e le seguenti dipendenze:
+Il progetto richiede **Python 3.10 o superiore**.
+
+**Verifica se Python è già installato:**
+
+```bash
+python --version
+# oppure
+python3 --version
+```
+
+Se non è installato o la versione è inferiore alla 3.10, scaricalo dal sito ufficiale:  
+**👉 [https://www.python.org/downloads/](https://www.python.org/downloads/)**
+
+> **⚠️ Windows:** durante l'installazione, spunta **"Add Python to PATH"** prima di cliccare Install. Senza questa opzione, i comandi `python` e `pip` non saranno riconosciuti dal terminale.
+
+Dopo l'installazione, verifica che anche `pip` sia disponibile:
+
+```bash
+pip --version
+```
+
+### 2. Creazione Virtual Environment (venv)
+
+È **fortemente consigliato** usare un virtual environment per isolare le dipendenze del progetto ed evitare conflitti con altri pacchetti Python installati nel sistema.
+
+```bash
+# Posizionati nella cartella radice del progetto
+cd cv-search-engine
+
+# Crea il virtual environment
+python -m venv venv
+```
+
+**Attivazione del venv:**
+
+```bash
+# Windows (CMD)
+venv\Scripts\activate
+
+# Windows (PowerShell)
+venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source venv/bin/activate
+```
+
+Quando il venv è attivo, vedrai il prefisso `(venv)` nel terminale. Da questo momento, tutti i comandi `pip install` installeranno i pacchetti solo all'interno del venv.
+
+> **Per disattivare il venv** al termine del lavoro: `deactivate`
+
+> **⚠️ PowerShell:** se ricevi un errore relativo alle execution policy, esegui prima:  
+> `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+
+### 3. Installazione Dipendenze Python
+
+Con il venv attivo, installa le dipendenze:
 
 ```bash
 pip install customtkinter numpy scikit-learn matplotlib FlagEmbedding python-pptx requests umap-learn
@@ -136,7 +191,7 @@ Oppure tramite requirements.txt:
 pip install -r requirements.txt
 ```
 
-**Ollama** (LLM locale):
+### 4. Installazione Ollama (LLM locale)
 
 ```bash
 # Installa Ollama da https://ollama.com
@@ -146,7 +201,7 @@ ollama pull llama3.2:3b
 ollama pull llama3.2:1b
 ```
 
-### 2. Preparazione dei CV
+### 5. Preparazione dei CV
 
 #### Raccolta di massa
 
@@ -185,7 +240,7 @@ Ogni file JSON deve avere questa struttura:
 }
 ```
 
-### 3. Generazione Embeddings
+### 6. Generazione Embeddings
 
 ```bash
 cd codes
@@ -200,7 +255,7 @@ Questo script:
 
 > **⚠️ Gli embeddings vanno ricreati ogni volta che si aggiungono nuovi CV di nuovi candidati o se ci sono variazioni in quelli già esistenti. Valutare quindi una creazione automatica degli embedding ogni N mesi**
 
-### 4. Template PowerPoint
+### 7. Template PowerPoint
 
 Posiziona almeno un template `.pptx` nella cartella `input/template/`.  
 Tale template verrà utilizzato come base per la creazione del draft finale con le informazioni dei candidati estratti. 
@@ -227,13 +282,14 @@ I placeholder, o TAG, supportati sono:
 | Fase | PC Base (8GB RAM, no GPU) | PC Medio (16GB RAM, no GPU) | PC con GPU |
 |---|---|---|---|
 | 1. Lettura README e comprensione progetto | ~10 min | ~10 min | ~10 min |
-| 2. Installazione Python + dipendenze (`pip install`) | 5-10 min | 5-10 min | 5-10 min |
-| 3. Download modello BGE-M3 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
-| 4. Installazione Ollama + download llama3.2 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
-| 5. Preparazione CV JSON (se non già pronti) | variabile | variabile | variabile |
-| 6. Generazione embeddings (10 CV) | 3-5 min | 1-3 min | 30-60 sec |
-| 7. Primo avvio app + prima ricerca | 2-3 min | 1-2 min | 30-60 sec |
-| **TOTALE (escluso punto 5)** | **~40-60 min** | **~30-50 min** | **~25-45 min** |
+| 2. Installazione Python + creazione venv | 5-10 min | 5-10 min | 5-10 min |
+| 3. Installazione dipendenze (`pip install`) | 5-10 min | 5-10 min | 5-10 min |
+| 4. Download modello BGE-M3 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
+| 5. Installazione Ollama + download llama3.2 (~2GB) | 5-15 min | 5-15 min | 5-15 min |
+| 6. Preparazione CV JSON (se non già pronti) | variabile | variabile | variabile |
+| 7. Generazione embeddings (10 CV) | 3-5 min | 1-3 min | 30-60 sec |
+| 8. Primo avvio app + prima ricerca | 2-3 min | 1-2 min | 30-60 sec |
+| **TOTALE (escluso punto 6)** | **~45-70 min** | **~35-55 min** | **~30-50 min** |
 
 > La maggior parte del tempo è download. Una volta completato il setup, le esecuzioni successive partono in pochi secondi.
 
@@ -307,11 +363,16 @@ Il sistema attuale carica tutti gli embeddings in memoria come array NumPy (file
 ## 🚀 Avvio
 
 ```bash
+# Attiva il virtual environment (se non già attivo)
+# Windows (CMD): venv\Scripts\activate
+# Windows (PowerShell): venv\Scripts\Activate.ps1
+# macOS / Linux: source venv/bin/activate
+
 # Assicurati che Ollama sia in esecuzione
 ollama serve
 
 # Avvia l'applicazione
-cd cv-search-engine\\codes
+cd cv-search-engine\codes
 python cv_search_app_v1.py
 ```
 
@@ -395,6 +456,9 @@ Per ogni ricerca, il sistema produce:
 
 | Problema | Soluzione |
 |---|---|
+| `python` non riconosciuto | Verifica di aver spuntato "Add Python to PATH" durante l'installazione. In alternativa, usa `python3`. Su Windows puoi reinstallare Python spuntando l'opzione. |
+| Errore creazione venv | Assicurati di usare Python 3.10+. Su Debian/Ubuntu potrebbe servire: `sudo apt install python3-venv` |
+| PowerShell blocca l'attivazione venv | Esegui: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` |
 | "LLM non disponibile" | Verifica che Ollama sia attivo: `ollama serve` |
 | "bind: Only one usage..." | Ollama è già in esecuzione, tutto ok |
 | Skills vuote nel parsing | Usa `llama3.2:3b`, non 1b |
