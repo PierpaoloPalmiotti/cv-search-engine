@@ -1,4 +1,5 @@
 # 🔍 CV Search Engine — RAG Pipeline per Selezione Candidati
+Tempo di lettura: 10-15 min
 
 Sistema di ricerca e generazione CV basato su **Retrieval-Augmented Generation (RAG)**.  
 Analizza query in linguaggio naturale, trova i candidati più adatti tramite similarità semantica e genera CV formattati in PowerPoint.
