@@ -141,7 +141,7 @@ git clone <URL_REPOSITORY>
 cd cv-search-engine
 ```
 
-> Sostituisci `<URL_REPOSITORY>` con l'URL effettivo del repository (es. `https://github.com/org/cv-search-engine.git` o l'equivalente Azure DevOps/GitLab).
+> Sostituisci `<URL_REPOSITORY>` con l'URL effettivo del repository (es. `https://github.com/org/cv-search-engine.git`.
 
 ### 2. Installazione Python
 
